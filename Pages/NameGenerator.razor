@@ -1,0 +1,79 @@
+@page "/namegenerator"
+@inject HttpClient Http
+
+<Grid
+    Item
+    ExtraSmall="@GridSize.Twelve"
+    Style="padding: 16px; text-align: center;">
+        <h1>@currentAdjective @currentNoun</h1>
+</Grid>
+<Grid
+    Item
+    ExtraSmall="@GridSize.Twelve"
+    Style="padding: 16px; text-align: center;">
+    <label for="wordSource">Choose a source:</label>
+    <select id="wordSource"
+            @onchange="ChangeSource">
+        <option value="english" selected>English</option>
+        <option value="xcom2">XCOM2</option>
+    </select>
+        <button @onclick="GenerateName">Generate</button>
+        
+    @currentWordSource
+</Grid>
+
+@code {
+    private IList<string> nouns = new List<string>();
+    private IList<string> adjectives = new List<string>();
+    private string currentNoun = "";
+    private string currentAdjective = "";
+    private string currentWordSource = "english";
+
+    protected override async Task OnInitializedAsync()
+    {
+        nouns = await Http.GetJsonAsync<List<string>>("Data/nouns.json");
+        adjectives = await Http.GetJsonAsync<List<string>>("Data/adjectives.json");
+        await FetchWords("english");
+        GenerateName();
+    }
+
+    private void GenerateName()
+    {
+        currentNoun = nouns[GetRandomFromArray(nouns)];
+        currentNoun = currentNoun.First().ToString().ToUpper() + currentNoun.Substring(1);
+        currentAdjective = adjectives[GetRandomFromArray(adjectives)];
+        currentAdjective = currentAdjective.First().ToString().ToUpper() + currentAdjective.Substring(1);
+    }
+
+    private async Task ChangeSource(ChangeEventArgs e)
+    {
+        string newSource = e.Value.ToString();
+        await FetchWords(newSource);
+    }
+
+    private async Task FetchWords(string source)
+    {
+        if(source == "english")
+        {
+            nouns = await Http.GetJsonAsync<List<string>>("Data/nouns.json");
+            adjectives = await Http.GetJsonAsync<string[]>("Data/adjectives.json");
+        }
+        if(source == "xcom2")
+        {
+            nouns = await Http.GetJsonAsync<List<string>>("Data/xcom2-nouns.json");
+            adjectives = await Http.GetJsonAsync<string[]>("Data/xcom2-adjectives.json");            
+        }
+        else
+        {
+            nouns = await Http.GetJsonAsync<List<string>>("Data/nouns.json");
+            adjectives = await Http.GetJsonAsync<string[]>("Data/adjectives.json");
+        }
+        currentWordSource = source;
+    }
+
+    private int GetRandomFromArray(IList<string> sourceList)
+    {
+        Random rnd = new Random();
+        return rnd.Next(0, sourceList.Count());
+    }
+}
