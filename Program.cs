@@ -1,25 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Text;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Skclusive.Material.Component;
-using Skclusive.Material.Core;
+using RandomOperationNameGenerator2;
 
-namespace RandomOperationNameGenerator2
+var builder = WebAssemblyHostBuilder.CreateDefault(args);
+builder.RootComponents.Add<App>("app");
+
+builder.Services.AddScoped(sp => new HttpClient
 {
-    public class Program
-    {
-        public static async Task Main(string[] args)
-        {
-            var builder = WebAssemblyHostBuilder.CreateDefault(args);
-            builder.RootComponents.Add<App>("app");
-            builder.Services.TryAddMaterialCoreServices(new MaterialConfigBuilder().Build());
+    BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
+});
 
-            builder.Services.AddBaseAddressHttpClient();
-
-            await builder.Build().RunAsync();
-        }
-    }
-}
+await builder.Build().RunAsync();

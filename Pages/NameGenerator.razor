@@ -1,77 +1,92 @@
 @page "/namegenerator"
 @inject HttpClient Http
 
-<Grid
-    Item
-    ExtraSmall="@GridSize.Twelve"
-    Style="padding: 16px; text-align: center;">
-        <h1>@currentAdjective @currentNoun</h1>
-</Grid>
-<Grid
-    Item
-    ExtraSmall="@GridSize.Twelve"
-    Style="padding: 16px; text-align: center;">
+<div style="padding: 16px; text-align: center;">
+    <h1>@Cap(rawAdjective) @Cap(rawNoun)</h1>
+</div>
+<div style="padding: 16px; text-align: center;">
     <label for="wordSource">Choose a source:</label>
-    <select id="wordSource"
-            @onchange="ChangeSource">
+    <select id="wordSource" @onchange="ChangeSource">
         <option value="english" selected>English</option>
         <option value="xcom2">XCOM2</option>
     </select>
-        <button @onclick="GenerateName">Generate</button>
-</Grid>
+    <button @onclick="GenerateName">Generate</button>
+</div>
+
+@if (!string.IsNullOrEmpty(rawAdjective))
+{
+    <div style="padding: 16px; max-width: 600px; margin: 0 auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th style="text-align: left; padding: 8px 12px; border-bottom: 2px solid #ccc; color: #555;">Format</th>
+                    <th style="text-align: left; padding: 8px 12px; border-bottom: 2px solid #ccc; color: #555;">Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (label, value) in Casings)
+                {
+                    <tr>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #777; white-space: nowrap;">@label</td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #eee; font-family: monospace;">@value</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
 
 @code {
     private IList<string> nouns = new List<string>();
     private IList<string> adjectives = new List<string>();
-    private string currentNoun = "";
-    private string currentAdjective = "";
-    private string currentWordSource = "english";
+    private string rawAdjective = "";
+    private string rawNoun = "";
+
+    private IEnumerable<(string Label, string Value)> Casings =>
+    [
+        ("Sentence case",   $"{Cap(rawAdjective)} {rawNoun}"),
+        ("camelCase",       $"{rawAdjective}{Cap(rawNoun)}"),
+        ("PascalCase",      $"{Cap(rawAdjective)}{Cap(rawNoun)}"),
+        ("snake_case",      $"{rawAdjective}_{rawNoun}"),
+        ("kebab-case",      $"{rawAdjective}-{rawNoun}"),
+        ("lowercase",       $"{rawAdjective} {rawNoun}"),
+        ("UPPERCASE",       $"{rawAdjective} {rawNoun}".ToUpper()),
+        ("dot.case",        $"{rawAdjective}.{rawNoun}"),
+        ("path/case",       $"{rawAdjective}/{rawNoun}"),
+    ];
 
     protected override async Task OnInitializedAsync()
     {
-        nouns = await Http.GetJsonAsync<List<string>>("Data/nouns.json");
-        adjectives = await Http.GetJsonAsync<List<string>>("Data/adjectives.json");
         await FetchWords("english");
         GenerateName();
     }
 
     private void GenerateName()
     {
-        currentNoun = nouns[GetRandomFromArray(nouns)];
-        currentNoun = currentNoun.First().ToString().ToUpper() + currentNoun.Substring(1);
-        currentAdjective = adjectives[GetRandomFromArray(adjectives)];
-        currentAdjective = currentAdjective.First().ToString().ToUpper() + currentAdjective.Substring(1);
+        rawNoun = nouns[Random.Shared.Next(0, nouns.Count)].ToLower();
+        rawAdjective = adjectives[Random.Shared.Next(0, adjectives.Count)].ToLower();
     }
 
     private async Task ChangeSource(ChangeEventArgs e)
     {
-        string newSource = e.Value.ToString();
-        await FetchWords(newSource);
+        await FetchWords(e.Value?.ToString() ?? "english");
+        GenerateName();
     }
 
     private async Task FetchWords(string source)
     {
-        if(source == "english")
+        if (source == "xcom2")
         {
-            nouns = await Http.GetJsonAsync<List<string>>("Data/nouns.json");
-            adjectives = await Http.GetJsonAsync<string[]>("Data/adjectives.json");
-        }
-        if(source == "xcom2")
-        {
-            nouns = await Http.GetJsonAsync<List<string>>("Data/xcom2-nouns.json");
-            adjectives = await Http.GetJsonAsync<string[]>("Data/xcom2-adjectives.json");            
+            nouns = await Http.GetFromJsonAsync<List<string>>("Data/xcom2-nouns.json") ?? new List<string>();
+            adjectives = await Http.GetFromJsonAsync<List<string>>("Data/xcom2-adjectives.json") ?? new List<string>();
         }
         else
         {
-            nouns = await Http.GetJsonAsync<List<string>>("Data/nouns.json");
-            adjectives = await Http.GetJsonAsync<string[]>("Data/adjectives.json");
+            nouns = await Http.GetFromJsonAsync<List<string>>("Data/nouns.json") ?? new List<string>();
+            adjectives = await Http.GetFromJsonAsync<List<string>>("Data/adjectives.json") ?? new List<string>();
         }
-        currentWordSource = source;
     }
 
-    private int GetRandomFromArray(IList<string> sourceList)
-    {
-        Random rnd = new Random();
-        return rnd.Next(0, sourceList.Count());
-    }
+    private static string Cap(string s) =>
+        string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0]) + s[1..];
 }
