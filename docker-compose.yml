@@ -1,0 +1,6 @@
+services:
+  blazor-rong:
+    image: ghcr.io/acastaner/blazor-rong:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8082:80"
